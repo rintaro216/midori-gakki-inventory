@@ -3,18 +3,10 @@
   publish = "out"
 
 [build.environment]
-  NODE_VERSION = "18.19.0"
-  NPM_FLAGS = "--force"
+  NODE_VERSION = "18"
   NODE_ENV = "production"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  force = false
-
-[context.production.environment]
-  NODE_ENV = "production"
-
-[context.deploy-preview.environment]
-  NODE_ENV = "production"
