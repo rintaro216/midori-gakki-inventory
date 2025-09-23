@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/supabase'
 import { exportToCSV, exportToExcel } from '@/utils/exportUtils'
-import EditItemModal from '@/components/EditItemModal'
-import DeleteConfirmModal from '@/components/DeleteConfirmModal'
 
 type InventoryItem = Database['public']['Tables']['inventory']['Row']
 
@@ -18,10 +16,6 @@ export default function InventoryPage() {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [manufacturerFilter, setManufacturerFilter] = useState('')
   const [colorFilter, setColorFilter] = useState('')
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
-  const [deletingItem, setDeletingItem] = useState<InventoryItem | null>(null)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   const categories = [
     'ギター',
@@ -54,20 +48,6 @@ export default function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleEditSave = (updatedItem: InventoryItem) => {
-    setInventory(prev => prev.map(item =>
-      item.id === updatedItem.id ? updatedItem : item
-    ))
-    setIsEditModalOpen(false)
-    setEditingItem(null)
-  }
-
-  const handleDeleteConfirm = (itemId: string) => {
-    setInventory(prev => prev.filter(item => item.id !== itemId))
-    setIsDeleteModalOpen(false)
-    setDeletingItem(null)
   }
 
   const filteredInventory = inventory.filter(item => {
@@ -251,15 +231,12 @@ export default function InventoryPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     登録日
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    アクション
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredInventory.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                       該当する商品が見つかりません
                     </td>
                   </tr>
@@ -300,28 +277,6 @@ export default function InventoryPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(item.created_at).toLocaleDateString('ja-JP')}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => {
-                              setEditingItem(item)
-                              setIsEditModalOpen(true)
-                            }}
-                            className="text-indigo-600 hover:text-indigo-900"
-                          >
-                            編集
-                          </button>
-                          <button
-                            onClick={() => {
-                              setDeletingItem(item)
-                              setIsDeleteModalOpen(true)
-                            }}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            削除
-                          </button>
-                        </div>
-                      </td>
                     </tr>
                   ))
                 )}
@@ -330,28 +285,6 @@ export default function InventoryPage() {
           </div>
         </div>
       </div>
-
-      {/* Edit Modal */}
-      <EditItemModal
-        item={editingItem}
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false)
-          setEditingItem(null)
-        }}
-        onSave={handleEditSave}
-      />
-
-      {/* Delete Modal */}
-      <DeleteConfirmModal
-        item={deletingItem}
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false)
-          setDeletingItem(null)
-        }}
-        onConfirm={handleDeleteConfirm}
-      />
     </div>
   )
 }
