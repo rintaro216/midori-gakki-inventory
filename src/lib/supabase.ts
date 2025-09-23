@@ -19,8 +19,19 @@ export type Database = {
           color: string
           condition: string
           price: number
+          supplier?: string
+          list_price?: number
+          wholesale_price?: number
+          wholesale_rate?: number
+          gross_margin?: number
           photo_url?: string
           notes?: string
+          // 新しい仕入れ管理フィールド
+          purchase_date?: string
+          purchase_price?: number
+          profit_margin?: number
+          profit_amount?: number
+          days_in_stock?: number
         }
         Insert: {
           id?: string
@@ -32,8 +43,19 @@ export type Database = {
           color: string
           condition: string
           price: number
+          supplier?: string
+          list_price?: number
+          wholesale_price?: number
+          wholesale_rate?: number
+          gross_margin?: number
           photo_url?: string
           notes?: string
+          // 新しい仕入れ管理フィールド
+          purchase_date?: string
+          purchase_price?: number
+          profit_margin?: number
+          profit_amount?: number
+          days_in_stock?: number
         }
         Update: {
           id?: string
@@ -45,8 +67,19 @@ export type Database = {
           color?: string
           condition?: string
           price?: number
+          supplier?: string
+          list_price?: number
+          wholesale_price?: number
+          wholesale_rate?: number
+          gross_margin?: number
           photo_url?: string
           notes?: string
+          // 新しい仕入れ管理フィールド
+          purchase_date?: string
+          purchase_price?: number
+          profit_margin?: number
+          profit_amount?: number
+          days_in_stock?: number
         }
       }
     }
