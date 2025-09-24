@@ -39,7 +39,7 @@ export default function AIBulkImportPage() {
     setMessage('商品を一括登録しました！')
     setExtractedProducts([])
     setTimeout(() => {
-      router.push('/inventory')
+      router.push('/dashboard')
     }, 2000)
   }
 
@@ -62,10 +62,10 @@ export default function AIBulkImportPage() {
               </p>
             </div>
             <button
-              onClick={() => router.push('/inventory')}
+              onClick={() => router.push('/dashboard')}
               className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
-              ← 在庫一覧に戻る
+              ← ダッシュボードに戻る
             </button>
           </div>
         </div>

@@ -28,6 +28,33 @@ const conditions = [
   'ジャンク'
 ]
 
+// 楽器店用カラーオプション（みどり楽器ブランドカラー：緑・オレンジ基調）
+const instrumentColors = [
+  { name: 'ナチュラル', value: 'ナチュラル', bgColor: '#F5DEB3', textColor: '#8B4513', description: '木目' },
+  { name: 'エイジドナチュラル', value: 'エイジドナチュラル', bgColor: '#D2B48C', textColor: '#654321', description: '経年変化木目' },
+  { name: 'ブラック', value: 'ブラック', bgColor: '#000000', textColor: '#FFFFFF', description: '黒' },
+  { name: 'ホワイト', value: 'ホワイト', bgColor: '#FFFFFF', textColor: '#000000', description: '白' },
+  { name: 'レッド', value: 'レッド', bgColor: '#DC143C', textColor: '#FFFFFF', description: '赤' },
+  { name: 'チェリーレッド', value: 'チェリーレッド', bgColor: '#B22222', textColor: '#FFFFFF', description: 'チェリー' },
+  { name: 'ブルー', value: 'ブルー', bgColor: '#4169E1', textColor: '#FFFFFF', description: '青' },
+  { name: 'ライトブルー', value: 'ライトブルー', bgColor: '#87CEEB', textColor: '#000000', description: '水色' },
+  { name: 'グリーン', value: 'グリーン', bgColor: '#228B22', textColor: '#FFFFFF', description: '緑 (店舗カラー)' },
+  { name: 'オレンジ', value: 'オレンジ', bgColor: '#FF8C00', textColor: '#FFFFFF', description: 'オレンジ (店舗カラー)' },
+  { name: 'イエロー', value: 'イエロー', bgColor: '#FFD700', textColor: '#000000', description: '黄' },
+  { name: '3トーンサンバースト', value: '3トーンサンバースト', bgColor: 'linear-gradient(to right, #8B4513, #FF8C00, #FFD700)', textColor: '#FFFFFF', description: '茶→橙→黄' },
+  { name: '2トーンサンバースト', value: '2トーンサンバースト', bgColor: 'linear-gradient(to right, #FF8C00, #FFD700)', textColor: '#FFFFFF', description: '橙→黄' },
+  { name: 'チェリーサンバースト', value: 'チェリーサンバースト', bgColor: 'linear-gradient(to right, #8B0000, #DC143C)', textColor: '#FFFFFF', description: '濃赤→赤' },
+  { name: 'マホガニー', value: 'マホガニー', bgColor: '#C04000', textColor: '#FFFFFF', description: 'マホガニー材' },
+  { name: 'メイプル', value: 'メイプル', bgColor: '#DEB887', textColor: '#8B4513', description: 'メイプル材' },
+  { name: 'ローズウッド', value: 'ローズウッド', bgColor: '#65000B', textColor: '#FFFFFF', description: 'ローズウッド材' },
+  { name: 'パープル', value: 'パープル', bgColor: '#800080', textColor: '#FFFFFF', description: '紫' },
+  { name: 'ピンク', value: 'ピンク', bgColor: '#FF69B4', textColor: '#FFFFFF', description: 'ピンク' },
+  { name: 'ゴールド', value: 'ゴールド', bgColor: '#FFD700', textColor: '#000000', description: '金色' },
+  { name: 'シルバー', value: 'シルバー', bgColor: '#C0C0C0', textColor: '#000000', description: '銀色' },
+  { name: '限定色', value: '限定色', bgColor: '#FF1493', textColor: '#FFFFFF', description: '特別カラー' },
+  { name: 'その他', value: 'その他', bgColor: '#808080', textColor: '#FFFFFF', description: '上記以外' }
+]
+
 export default function AddInventoryPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -46,9 +73,14 @@ export default function AddInventoryPage() {
     wholesale_rate: '',
     gross_margin: '',
     notes: '',
-    // 新しい仕入れ管理フィールド
-    purchase_date: '',
-    purchase_price: ''
+    // 仕入れ管理フィールド（統合）
+    purchase_date: new Date().toISOString().split('T')[0],
+    purchase_price: '',
+    invoice_number: '',
+    invoice_date: '',
+    payment_status: '未払い',
+    payment_date: '',
+    payment_method: ''
   })
   const [message, setMessage] = useState('')
 
@@ -119,7 +151,7 @@ export default function AddInventoryPage() {
   const handleCSVImportComplete = () => {
     setMessage('CSVファイルから商品を一括登録しました！')
     setTimeout(() => {
-      router.push('/inventory')
+      router.push('/dashboard')
     }, 2000)
   }
 
@@ -159,9 +191,14 @@ export default function AddInventoryPage() {
           wholesale_rate: formData.wholesale_rate ? parseFloat(formData.wholesale_rate) : null,
           gross_margin: formData.gross_margin ? parseInt(formData.gross_margin) : null,
           notes: formData.notes || null,
-          // 新しい仕入れ管理フィールド
+          // 仕入れ管理フィールド（統合）
           purchase_date: formData.purchase_date || null,
           purchase_price: formData.purchase_price ? parseInt(formData.purchase_price) : null,
+          invoice_number: formData.invoice_number || null,
+          invoice_date: formData.invoice_date || null,
+          payment_status: formData.payment_status || '未払い',
+          payment_date: formData.payment_date || null,
+          payment_method: formData.payment_method || null,
           profit_margin: profitMargin ? parseFloat(profitMargin.toFixed(2)) : null,
           profit_amount: profitAmount ? parseInt(profitAmount.toString()) : null
         }])
@@ -183,8 +220,14 @@ export default function AddInventoryPage() {
         wholesale_rate: '',
         gross_margin: '',
         notes: '',
-        purchase_date: '',
-        purchase_price: ''
+        // 仕入れ管理フィールド（統合）
+        purchase_date: new Date().toISOString().split('T')[0],
+        purchase_price: '',
+        invoice_number: '',
+        invoice_date: '',
+        payment_status: '未払い',
+        payment_date: '',
+        payment_method: ''
       })
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '登録に失敗しました')
@@ -204,7 +247,7 @@ export default function AddInventoryPage() {
               onClick={() => router.push('/inventory')}
               className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md"
             >
-              在庫一覧に戻る
+              ダッシュボードに戻る
             </button>
           </div>
         </div>
@@ -416,18 +459,69 @@ export default function AddInventoryPage() {
                     </div>
 
                     <div>
-                      <label htmlFor="color" className="block text-sm font-medium text-gray-700">
-                        カラー（色）
+                      <label htmlFor="color" className="block text-sm font-medium text-gray-700 mb-3">
+                        カラー（色） <span className="text-sm text-gray-500">※楽器の色を選択</span>
                       </label>
-                      <input
-                        type="text"
-                        id="color"
-                        name="color"
-                        value={formData.color}
-                        onChange={handleChange}
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
-                        placeholder="例: サンバースト"
-                      />
+
+                      {/* ビジュアルカラー選択 */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+                        {instrumentColors.map((colorOption) => (
+                          <button
+                            key={colorOption.value}
+                            type="button"
+                            onClick={() => setFormData({...formData, color: colorOption.value})}
+                            className={`
+                              relative p-3 rounded-lg border-2 transition-all duration-200 hover:scale-105
+                              ${formData.color === colorOption.value
+                                ? 'border-green-600 ring-2 ring-green-500 ring-opacity-50 shadow-lg'
+                                : 'border-gray-200 hover:border-green-400'
+                              }
+                            `}
+                            style={{
+                              background: colorOption.bgColor.includes('gradient')
+                                ? colorOption.bgColor
+                                : colorOption.bgColor,
+                              color: colorOption.textColor
+                            }}
+                          >
+                            <div className="text-center">
+                              <div className="font-medium text-xs mb-1">
+                                {colorOption.name}
+                              </div>
+                              <div className="text-xs opacity-80">
+                                {colorOption.description}
+                              </div>
+                            </div>
+                            {formData.color === colorOption.value && (
+                              <div className="absolute -top-1 -right-1 bg-green-600 text-white rounded-full w-5 h-5 flex items-center justify-center">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* カスタム色入力（その他選択時） */}
+                      {formData.color === 'その他' && (
+                        <div className="mt-3">
+                          <input
+                            type="text"
+                            placeholder="カスタムカラーを入力してください"
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                            onChange={(e) => setFormData({...formData, color: e.target.value || 'その他'})}
+                          />
+                        </div>
+                      )}
+
+                      {/* 選択されたカラー表示 */}
+                      {formData.color && (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-lg border">
+                          <span className="text-sm text-gray-600">選択されたカラー: </span>
+                          <span className="font-medium text-green-700">{formData.color}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div>
@@ -497,6 +591,86 @@ export default function AddInventoryPage() {
                         className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
                         placeholder="例: 楽器商事"
                       />
+                    </div>
+
+                    <div>
+                      <label htmlFor="invoice_number" className="block text-sm font-medium text-gray-700">
+                        請求書番号
+                      </label>
+                      <input
+                        type="text"
+                        id="invoice_number"
+                        name="invoice_number"
+                        value={formData.invoice_number}
+                        onChange={handleChange}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                        placeholder="例: INV-2024-001"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="invoice_date" className="block text-sm font-medium text-gray-700">
+                        請求書発行日
+                      </label>
+                      <input
+                        type="date"
+                        id="invoice_date"
+                        name="invoice_date"
+                        value={formData.invoice_date}
+                        onChange={handleChange}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="payment_status" className="block text-sm font-medium text-gray-700">
+                        支払い状況
+                      </label>
+                      <select
+                        id="payment_status"
+                        name="payment_status"
+                        value={formData.payment_status}
+                        onChange={handleChange}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                      >
+                        <option value="未払い">未払い</option>
+                        <option value="支払済み">支払済み</option>
+                        <option value="部分支払い">部分支払い</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="payment_date" className="block text-sm font-medium text-gray-700">
+                        支払日
+                      </label>
+                      <input
+                        type="date"
+                        id="payment_date"
+                        name="payment_date"
+                        value={formData.payment_date}
+                        onChange={handleChange}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="payment_method" className="block text-sm font-medium text-gray-700">
+                        支払い方法
+                      </label>
+                      <input
+                        type="text"
+                        id="payment_method"
+                        name="payment_method"
+                        value={formData.payment_method}
+                        onChange={handleChange}
+                        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                        placeholder="例: 銀行振込"
+                      />
+                    </div>
+
+                    {/* 販売価格情報 */}
+                    <div className="md:col-span-2">
+                      <h4 className="text-lg font-medium text-gray-900 mb-4 border-b pb-2">💰 販売価格情報</h4>
                     </div>
 
                     <div>

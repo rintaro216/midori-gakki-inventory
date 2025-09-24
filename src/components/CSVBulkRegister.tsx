@@ -27,6 +27,7 @@ export default function CSVBulkRegister({ products, onRegisterComplete }: CSVBul
   const [isRegistering, setIsRegistering] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showConfirmation, setShowConfirmation] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,21 +150,101 @@ export default function CSVBulkRegister({ products, onRegisterComplete }: CSVBul
         <h3 className="text-lg font-medium text-gray-900 mb-4">CSV一括登録</h3>
 
         {/* PDFから読み取った商品がある場合 */}
-        {products.length > 0 && (
+        {products.length > 0 && !showConfirmation && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <h4 className="text-sm font-medium text-blue-800 mb-2">
               PDFから読み取った商品 ({products.length}件)
             </h4>
             <p className="text-sm text-blue-600 mb-3">
-              読み取った商品をそのまま一括登録するか、CSVファイルで確認・編集してから登録できます。
+              読み取った商品の内容を確認してから登録、またはCSVファイルで編集してから登録できます。
             </p>
-            <button
-              onClick={registerDirectly}
-              disabled={isRegistering}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isRegistering ? '登録中...' : `${products.length}件を一括登録`}
-            </button>
+            <div className="space-x-3">
+              <button
+                onClick={() => setShowConfirmation(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+              >
+                データ内容を確認
+              </button>
+              <button
+                onClick={registerDirectly}
+                disabled={isRegistering}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              >
+                {isRegistering ? '登録中...' : `${products.length}件をそのまま登録`}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* データ確認画面 */}
+        {products.length > 0 && showConfirmation && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="text-lg font-medium text-green-800">
+                抽出された商品データの確認 ({products.length}件)
+              </h4>
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="text-sm text-green-600 hover:text-green-800"
+              >
+                ← 戻る
+              </button>
+            </div>
+
+            <div className="overflow-x-auto mb-4">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">No</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">カテゴリ</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">商品名</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">メーカー</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">型番</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">色</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">状態</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">価格</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">備考</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {products.map((product, index) => (
+                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{product.category}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={product.product_name}>
+                        {product.product_name}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{product.manufacturer}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{product.model_number}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{product.color}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{product.condition}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                        ¥{parseInt(product.price || '0').toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={product.notes || ''}>
+                        {product.notes || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-center space-x-4 pt-4 border-t border-green-200">
+              <button
+                onClick={registerDirectly}
+                disabled={isRegistering}
+                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+              >
+                {isRegistering ? '登録中...' : `この内容で${products.length}件を登録する`}
+              </button>
+              <button
+                onClick={() => setShowConfirmation(false)}
+                className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              >
+                キャンセル
+              </button>
+            </div>
           </div>
         )}
 

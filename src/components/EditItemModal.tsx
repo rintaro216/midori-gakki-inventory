@@ -206,6 +206,33 @@ export default function EditItemModal({ item, isOpen, onClose, onSave }: EditIte
               />
             </div>
 
+            {/* 仕入価格 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                仕入価格 (円)
+              </label>
+              <input
+                type="number"
+                value={formData.purchase_price || ''}
+                onChange={(e) => handleChange('purchase_price', parseInt(e.target.value) || 0)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500"
+                min="0"
+              />
+            </div>
+
+            {/* 仕入日 */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                仕入日
+              </label>
+              <input
+                type="date"
+                value={formData.purchase_date ? new Date(formData.purchase_date).toISOString().split('T')[0] : ''}
+                onChange={(e) => handleChange('purchase_date', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-green-500 focus:border-green-500"
+              />
+            </div>
+
             {/* 仕入先 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
