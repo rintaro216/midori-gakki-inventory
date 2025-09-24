@@ -69,9 +69,9 @@ export default function AIDashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">🤖 AI管理ダッシュボード</h1>
+              <h1 className="text-3xl font-bold text-gray-900">🤖 AI使用量ダッシュボード</h1>
               <p className="text-sm text-gray-600 mt-1">
-                OpenAI API使用量とAI機能の管理
+                OpenAI API使用量とコストの詳細分析
               </p>
             </div>
             <div className="flex items-center space-x-4">
@@ -103,9 +103,6 @@ export default function AIDashboardPage() {
 
       {/* メインコンテンツ */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 space-y-8">
-        {/* AI在庫分析 */}
-        <AIInventoryAnalysis />
-
         {loading && (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -120,6 +117,9 @@ export default function AIDashboardPage() {
         )}
 
         {usageStats && !loading && (
+          {/* AI在庫分析 */}
+          <AIInventoryAnalysis />
+
           <>
             {/* 概要統計 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -275,9 +275,8 @@ export default function AIDashboardPage() {
                   {Object.entries(usageStats.by_endpoint).map(([endpoint, stats]) => (
                     <div key={endpoint} className="border border-gray-200 rounded-lg p-4">
                       <h4 className="font-medium text-gray-900 mb-2">
-                        {endpoint === '/api/ai-extract' ? '🧠 商品情報抽出' :
-                         endpoint === '/api/ai-analyze' ? '📊 在庫分析' :
-                         endpoint === '/api/ai-describe' ? '✨ 商品説明生成' :
+                        {endpoint === 'pdf-extract-ai' ? '📄 PDF抽出' :
+                         endpoint === 'image-ocr-ai' ? '📷 画像OCR' :
                          endpoint}
                       </h4>
                       <div className="space-y-1 text-sm text-gray-600">
@@ -315,7 +314,7 @@ export default function AIDashboardPage() {
                               <div>
                                 <p className="text-sm text-gray-500">
                                   <span className="font-medium text-gray-900">{log.model}</span>で
-                                  {log.user_action || log.endpoint}を実行
+                                  {log.endpoint === 'pdf-extract-ai' ? 'PDF抽出' : log.user_action}を実行
                                 </p>
                                 <p className="text-xs text-gray-400">
                                   {log.total_tokens.toLocaleString()}トークン • ${log.cost_usd.toFixed(4)}
