@@ -1,9 +1,9 @@
 import OpenAI from 'openai'
 
 // OpenAI client configuration
-const openai = new OpenAI({
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-})
+}) : null
 
 // Log usage statistics
 const logUsage = async (
@@ -37,6 +37,12 @@ export async function extractProductInfo(text: string): Promise<{
   error?: string
 }> {
   try {
+    if (!openai) {
+      return {
+        success: false,
+        error: 'OpenAI API key not configured'
+      }
+    }
     const prompt = `
 以下のテキストから楽器の商品情報を抽出してください。
 JSONフォーマットで以下の情報を返してください：
@@ -118,6 +124,12 @@ export async function analyzeInventory(inventoryData: any[]): Promise<{
   error?: string
 }> {
   try {
+    if (!openai) {
+      return {
+        success: false,
+        error: 'OpenAI API key not configured'
+      }
+    }
     const summary = {
       totalItems: inventoryData.length,
       totalValue: inventoryData.reduce((sum, item) => sum + (item.price || 0), 0),
@@ -204,6 +216,12 @@ export async function generateProductDescription(productData: any): Promise<{
   error?: string
 }> {
   try {
+    if (!openai) {
+      return {
+        success: false,
+        error: 'OpenAI API key not configured'
+      }
+    }
     const prompt = `
 以下の楽器商品の魅力的な商品説明文を作成してください：
 
@@ -266,4 +284,4 @@ export async function generateProductDescription(productData: any): Promise<{
   }
 }
 
-export default openai
+export default openai || {} as OpenAI
