@@ -1,12 +1,7 @@
 [build]
   command = "npm install --force && npm run build"
-  publish = "out"
+  publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
   NODE_ENV = "production"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
