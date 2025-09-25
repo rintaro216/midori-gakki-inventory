@@ -1,21 +1,22 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import EditableConfirmationTable from './EditableConfirmationTable'
 
 interface Product {
-  category: string
-  product_name: string
-  manufacturer: string
-  model_number: string
-  color: string
-  condition: string
-  price: string
-  supplier?: string
-  list_price?: string
-  wholesale_price?: string
-  wholesale_rate?: string
-  gross_margin?: string
-  notes?: string
+  category: string           // 種類(カテゴリー)
+  product_name: string      // 商品名
+  manufacturer: string      // メーカー(ブランド)
+  model_number: string      // 品番
+  color: string            // 色(カラー)
+  serial_number?: string   // シリアルナンバー
+  price: string           // 価格(定価又は販売価格)
+  wholesale_price?: string // 仕入値段
+  wholesale_rate?: string  // 仕入掛け率
+  purchase_date?: string   // 仕入日
+  supplier?: string        // 仕入先
+  condition?: string       // 状態（既存フィールドも残す）
+  notes?: string          // 備考
 }
 
 interface CSVBulkRegisterProps {
@@ -28,6 +29,7 @@ export default function CSVBulkRegister({ products, onRegisterComplete }: CSVBul
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
+  const [editableProducts, setEditableProducts] = useState<Product[]>(products)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -72,8 +74,8 @@ export default function CSVBulkRegister({ products, onRegisterComplete }: CSVBul
     }
   }
 
-  const registerDirectly = async () => {
-    if (products.length === 0) {
+  const registerDirectly = async (productsToRegister: Product[] = editableProducts) => {
+    if (productsToRegister.length === 0) {
       setError('登録する商品がありません')
       return
     }
@@ -92,7 +94,7 @@ export default function CSVBulkRegister({ products, onRegisterComplete }: CSVBul
 
       const csvContent = [
         headers.join(','),
-        ...products.map(product =>
+        ...productsToRegister.map(product =>
           headers.map(header => {
             const value = product[header as keyof Product] || ''
             return `"${value.toString().replace(/"/g, '""')}"`
@@ -166,7 +168,7 @@ export default function CSVBulkRegister({ products, onRegisterComplete }: CSVBul
                 データ内容を確認
               </button>
               <button
-                onClick={registerDirectly}
+                onClick={() => registerDirectly()}
                 disabled={isRegistering}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
               >
@@ -178,74 +180,12 @@ export default function CSVBulkRegister({ products, onRegisterComplete }: CSVBul
 
         {/* データ確認画面 */}
         {products.length > 0 && showConfirmation && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-medium text-green-800">
-                抽出された商品データの確認 ({products.length}件)
-              </h4>
-              <button
-                onClick={() => setShowConfirmation(false)}
-                className="text-sm text-green-600 hover:text-green-800"
-              >
-                ← 戻る
-              </button>
-            </div>
-
-            <div className="overflow-x-auto mb-4">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">No</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">カテゴリ</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">商品名</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">メーカー</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">型番</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">色</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">状態</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">価格</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">備考</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {products.map((product, index) => (
-                    <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{product.category}</td>
-                      <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={product.product_name}>
-                        {product.product_name}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{product.manufacturer}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{product.model_number}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{product.color}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{product.condition}</td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                        ¥{parseInt(product.price || '0').toLocaleString()}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-gray-900 max-w-xs truncate" title={product.notes || ''}>
-                        {product.notes || '-'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex justify-center space-x-4 pt-4 border-t border-green-200">
-              <button
-                onClick={registerDirectly}
-                disabled={isRegistering}
-                className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
-              >
-                {isRegistering ? '登録中...' : `この内容で${products.length}件を登録する`}
-              </button>
-              <button
-                onClick={() => setShowConfirmation(false)}
-                className="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-              >
-                キャンセル
-              </button>
-            </div>
-          </div>
+          <EditableConfirmationTable
+            products={editableProducts}
+            onRegister={() => registerDirectly()}
+            onCancel={() => setShowConfirmation(false)}
+            isRegistering={isRegistering}
+          />
         )}
 
         {/* CSV ファイルアップロード */}
