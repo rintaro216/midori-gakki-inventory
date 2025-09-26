@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { extractProductInfo } from '@/services/openai'
+import OpenAI from 'openai'
+import pdfParse from 'pdf-parse'
 
 interface Product {
   category: string           // 種類(カテゴリー)
@@ -29,71 +30,49 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('Processing PDF with actual text extraction...')
+    console.log('Processing PDF with actual text extraction using pdf-parse...')
     const buffer = await file.arrayBuffer()
     const fileName = file.name
     console.log('PDF file name:', fileName)
 
-    // PDFからテキストを抽出（シンプルなアプローチ）
-    const pdfBuffer = Buffer.from(buffer)
-    console.log('PDF buffer size:', pdfBuffer.length)
-
-    // テスト用のサンプルテキスト（実際のPDFテキスト抽出の代替）
+    // pdf-parseを使用して実際にPDFからテキストを抽出
     let extractedText = ''
 
-    // PDFファイル名から楽器店の請求書であることを推測
-    if (fileName.includes('請求書') || fileName.includes('invoice') || fileName.includes('bill')) {
-      // 請求書らしいサンプルテキストを生成
-      extractedText = `
-        楽器店請求書 ${fileName}
+    try {
+      console.log('Extracting text from PDF using pdf-parse...')
+      const data = await pdfParse(Buffer.from(buffer))
+      extractedText = data.text
+      console.log(`PDF has ${data.numpages} pages`)
+      console.log('PDF text extraction completed, total length:', extractedText.length)
 
-        商品一覧:
-        1. アコースティックギター YAMAHA FG830 ナチュラル 新品 販売価格: 45,000円 仕入価格: 30,000円
-        2. エレキギター Fender Player Stratocaster ブラック 中古美品 販売価格: 85,000円 仕入価格: 60,000円
-        3. ベース Gibson Thunderbird 4 チェリー 中古 販売価格: 120,000円 仕入価格: 80,000円
-        4. ドラムセット TAMA Imperialstar 5pc ブルー 展示品 販売価格: 65,000円 仕入価格: 45,000円
-        5. キーボード CASIO CTK-3500 ブラック 新品 販売価格: 25,000円 仕入価格: 18,000円
-        6. アンプ Marshall MG15 ブラック 中古 販売価格: 12,000円 仕入価格: 8,000円
-        7. エフェクター BOSS DD-3 - 中古良品 販売価格: 8,500円 仕入価格: 5,500円
-        8. ピックアップ Seymour Duncan SH-4 ブラック 新品 販売価格: 15,000円 仕入価格: 10,000円
-
-        合計: 375,500円
-        仕入先: 楽器商事株式会社
-        納期: 2022年2月28日
-      `
-      console.log('Generated sample invoice text for:', fileName)
-    } else {
-      // 一般的な楽器商品リスト
-      extractedText = `
-        楽器商品カタログ
-
-        ギター類:
-        - YAMAHA FG800 アコースティックギター ナチュラル 新品 定価50,000円
-        - Fender American Professional II Telecaster エレキギター サンバースト 新品 定価180,000円
-
-        ベース類:
-        - Fender Player Jazz Bass エレキベース ブラック 新品 定価95,000円
-
-        ドラム類:
-        - Pearl Export EXX ドラムセット ホワイト 展示品 定価85,000円
-
-        キーボード類:
-        - KORG B2SP デジタルピアノ ブラック 新品 定価65,000円
-      `
-      console.log('Generated sample catalog text')
+    } catch (pdfError) {
+      console.error('pdf-parse extraction failed:', pdfError)
+      return NextResponse.json({
+        success: false,
+        error: `PDFの読み込みに失敗しました: ${pdfError instanceof Error ? pdfError.message : 'Unknown PDF error'}`
+      }, { status: 400 })
     }
-
-    console.log('Sample text generated, length:', extractedText.length)
 
     if (!extractedText || extractedText.length < 10) {
       return NextResponse.json({
         success: false,
-        error: 'PDFから十分なテキストを抽出できませんでした。'
+        error: 'PDFから十分なテキストを抽出できませんでした。画像ベースのPDFの可能性があります。'
       }, { status: 400 })
     }
 
     // OpenAI APIでテキストから商品情報を抽出
-    const { default: openai } = await import('@/services/openai')
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json({
+        success: false,
+        error: 'OpenAI API が設定されていません。環境変数 OPENAI_API_KEY を確認してください。'
+      }, { status: 500 })
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    })
+
+    console.log('Sending text to OpenAI for product extraction...')
 
     const extractionResponse = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -109,7 +88,7 @@ export async function POST(request: NextRequest) {
 - 存在しない情報は絶対に追加しない
 
 JSONフォーマット:
-[{"category":"","product_name":"","manufacturer":"","model_number":"","color":"","price":"","notes":""}]
+[{"category":"","product_name":"","manufacturer":"","model_number":"","color":"","price":"","condition":"","notes":""}]
 
 抽出対象テキスト:
 ${extractedText}`
@@ -125,8 +104,7 @@ ${extractedText}`
     }
 
     console.log('Raw AI response length:', content.length)
-    console.log('Raw AI response first 1000 chars:', content.substring(0, 1000))
-    console.log('Raw AI response last 1000 chars:', content.substring(Math.max(0, content.length - 1000)))
+    console.log('Raw AI response first 500 chars:', content.substring(0, 500))
 
     // JSON配列を抽出 - より厳密なパターンマッチング
     let jsonString = ''
@@ -219,12 +197,12 @@ ${extractedText}`
       )
     }
 
-    console.log(`Successfully extracted ${validProducts.length} products from PDF text`)
+    console.log(`Successfully extracted ${validProducts.length} products from PDF text using AI`)
 
     return NextResponse.json({
       success: true,
       products: validProducts,
-      method: 'AI処理 (Direct PDF Text Extraction)',
+      method: 'AI処理 (pdf-parse + OpenAI GPT-4o-mini)',
       fileName: fileName
     })
 

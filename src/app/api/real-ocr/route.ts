@@ -1,8 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
+import Tesseract from 'tesseract.js'
+
+interface Product {
+  category: string
+  product_name: string
+  manufacturer: string
+  model_number: string
+  color: string
+  condition: string
+  price: string
+  supplier?: string
+  list_price?: string
+  wholesale_price?: string
+  wholesale_rate?: string
+  gross_margin?: string
+  notes?: string
+}
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Real OCR endpoint called - using enhanced mock processing for handwritten documents')
+    console.log('Real OCR endpoint called - using actual Tesseract OCR processing')
 
     const formData = await request.formData()
     const images = []
@@ -23,74 +40,181 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`Processing ${images.length} handwritten images with enhanced mock OCR`)
+    console.log(`Processing ${images.length} images with actual Tesseract OCR`)
 
-    // 手書き文書用の改良されたサンプルデータ生成
-    const extractedProducts = []
+    // 実際のOCR処理で商品データを抽出
+    const extractedProducts: Product[] = []
 
     for (let idx = 0; idx < images.length; idx++) {
       const image = images[idx]
-      const fileName = image.name || `handwritten_${idx + 1}.jpg`
+      const fileName = image.name || `image_${idx + 1}.jpg`
 
-      console.log(`Processing handwritten image: ${fileName}`)
+      console.log(`Processing image: ${fileName}`)
 
-      // 手書き文書特有のパターンを考慮したサンプルデータ
-      const handwrittenProducts = [
-        {
-          category: 'ギター',
-          product_name: 'エレクトリックギター（手書きメモより）',
-          manufacturer: 'Fender',
-          model_number: 'Stratocaster',
-          color: 'サンバースト',
-          condition: '中古',
-          price: '78000',
-          supplier: '手書き請求書',
-          notes: `${fileName}から手書き文字認識（模擬処理）`
-        },
-        {
-          category: 'アンプ',
-          product_name: 'ギターアンプ（手書きメモより）',
-          manufacturer: 'Marshall',
-          model_number: 'DSL40C',
-          color: 'ブラック',
-          condition: '展示品',
-          price: '52000',
-          supplier: '手書き請求書',
-          notes: `${fileName}から手書き文字認識（模擬処理）`
+      try {
+        // 画像をバッファに変換
+        const buffer = await image.arrayBuffer()
+
+        // Tesseract.jsでOCR処理
+        const result = await Tesseract.recognize(
+          Buffer.from(buffer),
+          'jpn+eng', // 日本語と英語を認識
+          {
+            logger: (m) => {
+              if (m.status === 'recognizing text') {
+                console.log(`OCR Progress for ${fileName}: ${Math.round(m.progress * 100)}%`)
+              }
+            }
+          }
+        )
+
+        const extractedText = result.data.text
+        console.log(`OCR extracted text from ${fileName}:`, extractedText.substring(0, 200))
+
+        if (extractedText && extractedText.length > 3) {
+          // OCRで抽出したテキストから商品情報を解析
+          const product = extractProductFromOCR(extractedText, fileName)
+          if (product) {
+            extractedProducts.push(product)
+          }
+        } else {
+          console.log(`No text extracted from ${fileName}`)
         }
-      ]
 
-      extractedProducts.push(...handwrittenProducts)
+      } catch (ocrError) {
+        console.error(`OCR processing failed for ${fileName}:`, ocrError)
+        // エラーがあっても他の画像の処理は続行
+        extractedProducts.push({
+          category: 'その他',
+          product_name: `OCR処理失敗: ${fileName}`,
+          manufacturer: '',
+          model_number: '',
+          color: '',
+          condition: '不明',
+          price: '',
+          notes: `OCR処理中にエラーが発生しました: ${ocrError instanceof Error ? ocrError.message : 'Unknown error'}`
+        })
+      }
     }
 
-    console.log(`Successfully processed ${images.length} handwritten images, extracted ${extractedProducts.length} products`)
+    if (extractedProducts.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: '全ての画像からテキストを抽出できませんでした。より鮮明な画像をお試しください。'
+        },
+        { status: 400 }
+      )
+    }
 
-    // 手書き文書用の特別な応答
+    console.log(`Successfully extracted ${extractedProducts.length} products using real OCR processing`)
+
     return NextResponse.json({
       success: true,
       products: extractedProducts,
-      method: 'Enhanced Mock OCR (手書き文書対応)',
-      extractedText: `手書き文書${images.length}枚を処理しました。文字認識の精度向上のため、画像の明度・コントラストの調整をお勧めします。`,
-      handwrittenSupport: true,
-      recommendations: [
-        '📝 手書き文字の認識精度を上げるコツ:',
-        '• 明るい照明で撮影する',
-        '• 文字を大きくはっきりと書く',
-        '• 背景と文字のコントラストを高める',
-        '• 画像の傾きを補正する',
-        '• Mock処理で継続作業が可能です'
-      ]
+      method: 'Real OCR処理 (Tesseract.js)',
+      extractedText: `${extractedProducts.length}個の画像を処理しました`
     })
 
   } catch (error) {
-    console.error('Real OCR processing error:', error)
+    console.error('Real OCR extraction error:', error)
     return NextResponse.json(
       {
         success: false,
-        error: `手書きOCR処理エラー: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        suggestion: 'Mock処理に切り替えて作業を継続してください'
+        error: `Real OCR処理エラー: ${error instanceof Error ? error.message : 'Unknown error'}`
       },
       { status: 500 }
     )
+  }
+}
+
+function extractProductFromOCR(text: string, fileName: string): Product | null {
+  console.log('Analyzing OCR text:', text)
+
+  // 価格の抽出（様々な形式に対応）
+  const pricePatterns = [
+    /[¥￥]?\s*[\d,]+\s*(?:円|YEN|\?)/gi,
+    /[\d,]+\s*[¥￥]/gi,
+    /price[:\s]*[\d,]+/gi,
+    /値段[:\s]*[\d,]+/gi
+  ]
+
+  let price = ''
+  for (const pattern of pricePatterns) {
+    const match = text.match(pattern)
+    if (match) {
+      price = match[0].replace(/[¥￥円,\s]/g, '')
+      break
+    }
+  }
+
+  // ブランド名の抽出
+  const brands = [
+    'YAMAHA', 'Fender', 'Gibson', 'Martin', 'Taylor', 'Ibanez', 'ESP', 'PRS',
+    'Roland', 'KORG', 'Casio', 'Pearl', 'Tama', 'DW', 'Ludwig',
+    'Boss', 'MXR', 'TC Electronic'
+  ]
+
+  let detectedBrand = ''
+  for (const brand of brands) {
+    if (text.toLowerCase().includes(brand.toLowerCase())) {
+      detectedBrand = brand
+      break
+    }
+  }
+
+  // 型番の抽出
+  const modelPatterns = [
+    /model[:\s]*([A-Z0-9-]+)/gi,
+    /型番[:\s]*([A-Z0-9-]+)/gi,
+    /[A-Z]{2,}\s*-?\s*[0-9]+[A-Z]*/g
+  ]
+
+  let model = ''
+  for (const pattern of modelPatterns) {
+    const match = text.match(pattern)
+    if (match) {
+      model = match[0].replace(/model[:\s]*/gi, '').replace(/型番[:\s]*/gi, '')
+      break
+    }
+  }
+
+  // カテゴリの判定
+  const categoryKeywords = {
+    'ギター': ['guitar', 'ギター', 'エレキギター', 'アコギ'],
+    'ベース': ['bass', 'ベース', 'エレキベース'],
+    'ドラム': ['drum', 'ドラム', 'ドラムセット'],
+    'キーボード・ピアノ': ['piano', 'keyboard', 'ピアノ', 'キーボード'],
+    'アンプ': ['amp', 'amplifier', 'アンプ'],
+    'エフェクター': ['effect', 'pedal', 'エフェクター']
+  }
+
+  let detectedCategory = 'その他'
+  for (const [category, keywords] of Object.entries(categoryKeywords)) {
+    if (keywords.some(keyword => text.toLowerCase().includes(keyword.toLowerCase()))) {
+      detectedCategory = category
+      break
+    }
+  }
+
+  // 商品名を生成
+  let productName = detectedBrand
+  if (model) productName += ` ${model}`
+  if (!productName) productName = detectedCategory
+
+  // 有効な情報があるかチェック
+  if (!productName || productName === 'その他') {
+    return null
+  }
+
+  return {
+    category: detectedCategory,
+    product_name: productName,
+    manufacturer: detectedBrand,
+    model_number: model,
+    color: 'ナチュラル', // デフォルト
+    condition: '中古', // デフォルト
+    price,
+    notes: `${fileName}からOCR自動抽出`
   }
 }

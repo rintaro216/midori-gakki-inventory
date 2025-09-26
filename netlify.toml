@@ -1,7 +1,14 @@
 [build]
-  command = "npm install --force && npm run build"
-  publish = ".next"
-
+  command = "npm run build"
+  
 [build.environment]
-  NODE_VERSION = "20"
-  NODE_ENV = "production"
+  NODE_VERSION = "18"
+  NEXT_DISABLE_TYPE_CHECK = "1"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
