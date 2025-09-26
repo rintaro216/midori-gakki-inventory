@@ -2,13 +2,13 @@
   command = "npm run build"
   
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
   NEXT_DISABLE_TYPE_CHECK = "1"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[template.environment]
+  NEXT_PUBLIC_SUPABASE_URL = "Change me"
+  NEXT_PUBLIC_SUPABASE_ANON_KEY = "Change me"
+  OPENAI_API_KEY = "Change me"
