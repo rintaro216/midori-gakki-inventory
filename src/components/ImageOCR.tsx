@@ -1,15 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-
-interface ProductInfo {
-  name: string
-  brand: string
-  model: string
-  price: string
-  category: string
-  condition: string
-}
+import { processImageOCRClient, ProductInfo } from '@/lib/client-ocr-processor'
 
 interface ImageOCRProps {
   onProductInfoExtracted: (productInfo: ProductInfo) => void
@@ -41,21 +33,9 @@ export default function ImageOCR({ onProductInfoExtracted }: ImageOCRProps) {
     setError(null)
 
     try {
-      const formData = new FormData()
-      formData.append('image', file)
+      const result = await processImageOCRClient(file)
 
-      const response = await fetch('/api/ocr', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) {
-        throw new Error('OCR処理に失敗しました')
-      }
-
-      const result = await response.json()
-
-      if (result.success) {
+      if (result.success && result.productInfo) {
         onProductInfoExtracted(result.productInfo)
       } else {
         throw new Error(result.error || 'OCR処理に失敗しました')

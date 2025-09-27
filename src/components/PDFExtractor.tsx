@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { processPDFClient } from '@/lib/client-pdf-processor'
 
 interface ProductInfo {
   name: string
@@ -41,25 +42,20 @@ export default function PDFExtractor({ onProductInfoExtracted }: PDFExtractorPro
     setError(null)
 
     try {
-      const formData = new FormData()
-      formData.append('pdf', file)
+      const result = await processPDFClient(file)
 
-      const response = await fetch('/api/pdf-extract', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) {
-        throw new Error('PDF処理に失敗しました')
-      }
-
-      const result = await response.json()
-
-      if (result.success) {
-        onProductInfoExtracted(result.productInfo)
-        if (result.note) {
-          setError(`注意: ${result.note}`)
+      if (result.success && result.products && result.products.length > 0) {
+        // 最初の商品を ProductInfo 形式に変換
+        const product = result.products[0]
+        const productInfo: ProductInfo = {
+          name: product.product_name,
+          brand: product.manufacturer,
+          model: product.model_number,
+          price: product.price,
+          category: product.category,
+          condition: product.condition || '中古'
         }
+        onProductInfoExtracted(productInfo)
       } else {
         throw new Error(result.error || 'PDF処理に失敗しました')
       }
@@ -89,7 +85,7 @@ export default function PDFExtractor({ onProductInfoExtracted }: PDFExtractorPro
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,application/pdf"
+        accept=".pdf"
         onChange={handleFileSelect}
         className="hidden"
       />
@@ -97,50 +93,46 @@ export default function PDFExtractor({ onProductInfoExtracted }: PDFExtractorPro
       {!uploadedFile ? (
         <div>
           <div className="mb-4">
-            <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-              <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21l3-3 7 7 13-13 3 3L20 28 7 21z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 12v6m6-18v18M6 18h12" />
             </svg>
           </div>
           <p className="text-lg font-medium text-gray-900 mb-2">
-            商品カタログPDFをアップロードしてください
+            PDFファイルをアップロードしてください
           </p>
           <p className="text-sm text-gray-600 mb-4">
-            PDF内の商品情報（商品名、価格、型番など）を自動で読み取ります
+            商品カタログやリストから商品情報を抽出します
           </p>
           <button
             onClick={handleFileUpload}
             disabled={isProcessing}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
-            PDFファイルを選択
+            ファイルを選択
           </button>
         </div>
       ) : (
         <div>
           <div className="mb-4">
-            <div className="flex items-center justify-center p-4 bg-red-50 rounded-lg">
+            <div className="flex items-center justify-center p-4 bg-gray-50 rounded-lg">
               <svg className="w-8 h-8 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <div className="text-left">
-                <p className="text-sm font-medium text-gray-900">{uploadedFile.name}</p>
-                <p className="text-xs text-gray-500">
-                  {(uploadedFile.size / (1024 * 1024)).toFixed(2)} MB
-                </p>
-              </div>
+              <span className="text-sm text-gray-700">{uploadedFile.name}</span>
             </div>
           </div>
           {isProcessing && (
             <div className="mb-4">
               <div className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <span className="text-green-600">PDFを解析中...</span>
+                <span className="text-blue-600">PDFを解析中...</span>
               </div>
             </div>
           )}
@@ -153,14 +145,14 @@ export default function PDFExtractor({ onProductInfoExtracted }: PDFExtractorPro
             <button
               onClick={handleFileUpload}
               disabled={isProcessing}
-              className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+              className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
-              別のPDFを選択
+              別のファイルを選択
             </button>
             <button
               onClick={clearFile}
               disabled={isProcessing}
-              className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+              className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
               クリア
             </button>

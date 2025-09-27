@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+'use client'
+
 import Tesseract from 'tesseract.js'
 
-interface ProductInfo {
+export interface ProductInfo {
   name: string
   brand: string
   model: string
@@ -10,78 +11,89 @@ interface ProductInfo {
   condition: string
 }
 
-export async function POST(request: NextRequest) {
+export async function processImageOCRClient(file: File): Promise<{
+  success: boolean
+  productInfo?: ProductInfo
+  extractedText?: string
+  error?: string
+}> {
   try {
-    const formData = await request.formData()
-    const file = formData.get('image') as File
+    console.log('Processing image with client-side Tesseract OCR...')
 
-    if (!file) {
-      return NextResponse.json(
-        { success: false, error: '画像ファイルが見つかりません' },
-        { status: 400 }
-      )
+    // ファイルサイズチェック (5MB制限)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('画像ファイルサイズが大きすぎます。5MB以下の画像を選択してください。')
     }
 
-    console.log('Processing image with Tesseract OCR...')
-    const buffer = await file.arrayBuffer()
+    // ファイルタイプチェック
+    if (!file.type.startsWith('image/')) {
+      throw new Error('画像ファイルを選択してください。')
+    }
 
-    let extractedText = ''
+    console.log('Tesseract settings:', {
+      corePath: process.env.NODE_ENV === 'production'
+        ? 'https://unpkg.com/tesseract.js@6.0.1/dist'
+        : undefined,
+      workerPath: process.env.NODE_ENV === 'production'
+        ? 'https://unpkg.com/tesseract.js@6.0.1/dist/worker.min.js'
+        : undefined
+    })
 
-    try {
-      // Tesseract.jsを使用してOCR処理
-      const result = await Tesseract.recognize(
-        Buffer.from(buffer),
-        'jpn+eng', // 日本語と英語を認識
-        {
-          logger: (m) => {
-            if (m.status === 'recognizing text') {
-              console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`)
-            }
+    // Tesseract.js 6.0.1対応 - タイムアウト付き
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('OCR処理がタイムアウトしました。より小さな画像をお試しください。')), 60000)
+    )
+
+    const ocrPromise = Tesseract.recognize(
+      file,
+      'jpn+eng', // 日本語と英語を認識
+      {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`)
           }
-        }
-      )
+        },
+        // Netlify静的サイト用の設定
+        corePath: process.env.NODE_ENV === 'production'
+          ? 'https://unpkg.com/tesseract.js@6.0.1/dist'
+          : undefined,
+        workerPath: process.env.NODE_ENV === 'production'
+          ? 'https://unpkg.com/tesseract.js@6.0.1/dist/worker.min.js'
+          : undefined
+      }
+    )
 
-      extractedText = result.data.text
-      console.log(`OCR extracted text length: ${extractedText.length}`)
+    const result = await Promise.race([ocrPromise, timeoutPromise]) as any
 
-    } catch (ocrError) {
-      console.error('Tesseract OCR failed:', ocrError)
-      return NextResponse.json({
-        success: false,
-        error: 'OCR処理中にエラーが発生しました。画像の品質を確認してください。'
-      }, { status: 500 })
-    }
+    const extractedText = result.data.text
+    console.log(`OCR extracted text length: ${extractedText.length}`)
 
     if (!extractedText || extractedText.length < 3) {
-      return NextResponse.json({
+      return {
         success: false,
         error: '画像からテキストを抽出できませんでした。より鮮明な画像をお試しください。'
-      }, { status: 400 })
+      }
     }
 
     // OCRで抽出したテキストから商品情報を解析
     const productInfo = extractProductInfoFromOCR(extractedText)
 
-    return NextResponse.json({
+    return {
       success: true,
       productInfo,
       extractedText: extractedText.substring(0, 500) + '...' // デバッグ用
-    })
+    }
 
   } catch (error) {
-    console.error('OCR processing error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: `OCR処理エラー: ${error instanceof Error ? error.message : 'Unknown error'}`
-      },
-      { status: 500 }
-    )
+    console.error('Client OCR processing error:', error)
+    return {
+      success: false,
+      error: `OCR処理エラー: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
   }
 }
 
 function extractProductInfoFromOCR(text: string): ProductInfo {
-  // OCRテキストから商品情報を抽出
   console.log('Analyzing OCR text:', text)
 
   // 価格の抽出（様々な形式に対応）
